@@ -1,0 +1,8 @@
+namespace TravelAgency.DTOs;
+
+public class TripDTO
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public List<CountryDTO> Countries { get; set; }
+}
