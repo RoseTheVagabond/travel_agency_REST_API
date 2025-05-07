@@ -40,44 +40,48 @@ public class ClientsRepository : IClientsRepository
             WHERE ct.IdClient = @ClientId";
         
         using SqlConnection connection = new SqlConnection(_connectionString);
-        using SqlCommand command = new SqlCommand(commandText, connection);
-        
-        command.Parameters.AddWithValue("@ClientId", clientId);
-        
         await connection.OpenAsync(cancellationToken);
         
-        using SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
-        
-        while (await reader.ReadAsync(cancellationToken))
+        // Get client trips
+        using (SqlCommand command = new SqlCommand(commandText, connection))
         {
-            clientTrips.Add(new ClientTripDTO
+            command.Parameters.AddWithValue("@ClientId", clientId);
+            
+            using (SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken))
             {
-                Trip = new TripDTO
+                while (await reader.ReadAsync(cancellationToken))
                 {
-                    Id = reader.GetInt32(reader.GetOrdinal("IdTrip")),
-                    Name = reader.GetString(reader.GetOrdinal("Name")),
-                    Description = reader.GetString(reader.GetOrdinal("Description")),
-                    DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
-                    DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
-                    MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople"))
-                },
-                RegisteredAt = ConvertToDateTime(reader.GetInt32(reader.GetOrdinal("RegisteredAt"))),
-                PaymentDate = reader.IsDBNull(reader.GetOrdinal("PaymentDate"))
-                    ? (DateTime?)null 
-                    : ConvertToDateTime(reader.GetInt32(reader.GetOrdinal("PaymentDate")))
-            });
+                    clientTrips.Add(new ClientTripDTO
+                    {
+                        Trip = new TripDTO
+                        {
+                            Id = reader.GetInt32(reader.GetOrdinal("IdTrip")),
+                            Name = reader.GetString(reader.GetOrdinal("Name")),
+                            Description = reader.GetString(reader.GetOrdinal("Description")),
+                            DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
+                            DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
+                            MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople")),
+                            Countries = new List<CountryDTO>()
+                        },
+                        RegisteredAt = ConvertToDateTime(reader.GetInt32(reader.GetOrdinal("RegisteredAt"))),
+                        PaymentDate = reader.IsDBNull(reader.GetOrdinal("PaymentDate"))
+                            ? (DateTime?)null 
+                            : ConvertToDateTime(reader.GetInt32(reader.GetOrdinal("PaymentDate")))
+                    });
+                }
+            }
         }
         
-        // Get countries for each trip
+        // Get countries for each trip using separate connections
         foreach (var clientTrip in clientTrips)
         {
-            clientTrip.Trip.Countries = await GetTripCountries(clientTrip.Trip.Id, connection, cancellationToken);
+            clientTrip.Trip.Countries = await GetTripCountriesWithNewConnection(clientTrip.Trip.Id, cancellationToken);
         }
         
         return clientTrips;
     }
 
-    private async Task<List<CountryDTO>> GetTripCountries(int tripId, SqlConnection existingConnection, CancellationToken cancellationToken)
+    private async Task<List<CountryDTO>> GetTripCountriesWithNewConnection(int tripId, CancellationToken cancellationToken)
     {
         var countries = new List<CountryDTO>();
         
@@ -87,7 +91,11 @@ public class ClientsRepository : IClientsRepository
             JOIN Country_Trip ct ON c.IdCountry = ct.IdCountry
             WHERE ct.IdTrip = @TripId";
         
-        using SqlCommand command = new SqlCommand(commandText, existingConnection);
+        // Use a new connection for getting countries
+        using SqlConnection connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+        
+        using SqlCommand command = new SqlCommand(commandText, connection);
         command.Parameters.AddWithValue("@TripId", tripId);
         
         using SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -155,7 +163,7 @@ public class ClientsRepository : IClientsRepository
         
         command.Parameters.AddWithValue("@ClientId", clientId);
         command.Parameters.AddWithValue("@TripId", tripId);
-        command.Parameters.AddWithValue("@RegisteredAt", DateTime.Now);
+        command.Parameters.AddWithValue("@RegisteredAt", ConvertToIntDate(DateTime.Now));
         
         await connection.OpenAsync(cancellationToken);
         
@@ -189,5 +197,10 @@ public class ClientsRepository : IClientsRepository
         int day = dateInt % 100;
     
         return new DateTime(year, month, day);
+    }
+    
+    private int ConvertToIntDate(DateTime date)
+    {
+        return date.Year * 10000 + date.Month * 100 + date.Day;
     }
 }

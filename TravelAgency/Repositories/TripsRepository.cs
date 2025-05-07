@@ -23,35 +23,33 @@ public class TripsRepository : ITripsRepository
             ORDER BY DateFrom";
         
         using SqlConnection connection = new SqlConnection(_connectionString);
-        using SqlCommand command = new SqlCommand(commandText, connection);
-        
         await connection.OpenAsync(cancellationToken);
         
-        using SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
-        
-        while (await reader.ReadAsync(cancellationToken))
+        // First, get all trips
+        using (SqlCommand command = new SqlCommand(commandText, connection))
+        using (SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken))
         {
-            var trip = new TripDTO
+            while (await reader.ReadAsync(cancellationToken))
             {
-                Id = reader.GetInt32(reader.GetOrdinal("IdTrip")),
-                Name = reader.GetString(reader.GetOrdinal("Name")),
-                Description = reader.GetString(reader.GetOrdinal("Description")),
-                DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
-                DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
-                MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople")),
-                Countries = new List<CountryDTO>()
-            };
-            
-            trips.Add(trip);
+                var trip = new TripDTO
+                {
+                    Id = reader.GetInt32(reader.GetOrdinal("IdTrip")),
+                    Name = reader.GetString(reader.GetOrdinal("Name")),
+                    Description = reader.GetString(reader.GetOrdinal("Description")),
+                    DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
+                    DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
+                    MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople")),
+                    Countries = new List<CountryDTO>()
+                };
+                
+                trips.Add(trip);
+            }
         }
         
-        // Close the first reader
-        reader.Close();
-        
-        // Get countries for each trip
+        // Then, get countries for each trip using separate connections
         foreach (var trip in trips)
         {
-            trip.Countries = await GetTripCountries(trip.Id, connection, cancellationToken);
+            trip.Countries = await GetTripCountriesWithNewConnection(trip.Id, cancellationToken);
         }
 
         return trips;
@@ -67,41 +65,40 @@ public class TripsRepository : ITripsRepository
             WHERE IdTrip = @TripId";
         
         using SqlConnection connection = new SqlConnection(_connectionString);
-        using SqlCommand command = new SqlCommand(commandText, connection);
-        
-        command.Parameters.AddWithValue("@TripId", tripId);
-        
         await connection.OpenAsync(cancellationToken);
         
-        using SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
-        
-        if (await reader.ReadAsync(cancellationToken))
+        using (SqlCommand command = new SqlCommand(commandText, connection))
         {
-            trip = new TripDTO
+            command.Parameters.AddWithValue("@TripId", tripId);
+            
+            using (SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken))
             {
-                Id = reader.GetInt32(reader.GetOrdinal("IdTrip")),
-                Name = reader.GetString(reader.GetOrdinal("Name")),
-                Description = reader.GetString(reader.GetOrdinal("Description")),
-                DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
-                DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
-                MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople")),
-                Countries = new List<CountryDTO>()
-            };
+                if (await reader.ReadAsync(cancellationToken))
+                {
+                    trip = new TripDTO
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("IdTrip")),
+                        Name = reader.GetString(reader.GetOrdinal("Name")),
+                        Description = reader.GetString(reader.GetOrdinal("Description")),
+                        DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
+                        DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
+                        MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople")),
+                        Countries = new List<CountryDTO>()
+                    };
+                }
+            }
         }
         
         if (trip != null)
         {
-            // Close the first reader
-            reader.Close();
-            
-            // Get countries for the trip
-            trip.Countries = await GetTripCountries(trip.Id, connection, cancellationToken);
+            // Get countries using a separate connection
+            trip.Countries = await GetTripCountriesWithNewConnection(trip.Id, cancellationToken);
         }
         
         return trip;
     }
     
-    private async Task<List<CountryDTO>> GetTripCountries(int tripId, SqlConnection connection, CancellationToken cancellationToken)
+    private async Task<List<CountryDTO>> GetTripCountriesWithNewConnection(int tripId, CancellationToken cancellationToken)
     {
         var countries = new List<CountryDTO>();
         
@@ -110,6 +107,10 @@ public class TripsRepository : ITripsRepository
             FROM Country c
             JOIN Country_Trip ct ON c.IdCountry = ct.IdCountry
             WHERE ct.IdTrip = @TripId";
+        
+        // Use a new connection for getting countries
+        using SqlConnection connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
         
         using SqlCommand command = new SqlCommand(commandText, connection);
         command.Parameters.AddWithValue("@TripId", tripId);
@@ -127,6 +128,8 @@ public class TripsRepository : ITripsRepository
         
         return countries;
     }
+    
+    // Remove the old GetTripCountries method that reused connections
     
     public async Task<bool> DoesTripExist(int tripId, CancellationToken cancellationToken)
     {
