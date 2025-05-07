@@ -7,7 +7,6 @@ namespace TravelAgency.Controllers;
 [ApiController]
 public class TripsController : ControllerBase
 {
-    
     private readonly ITripsService _tripsService;
 
     public TripsController(ITripsService tripsService)
@@ -16,19 +15,21 @@ public class TripsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetTrips()
+    public async Task<IActionResult> GetTrips(CancellationToken cancellationToken)
     {
-        var trips = await _tripsService.GetTrips();
+        var trips = await _tripsService.GetTrips(cancellationToken);
         return Ok(trips);
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetTrip(int id)
+    public async Task<IActionResult> GetTrip(int id, CancellationToken cancellationToken)
     {
-        // if( await DoesTripExist(id)){
-        //  return NotFound();
-        // }
-        // var trip = ... GetTrip(id);
-        return Ok();
+        if (!await _tripsService.DoesTripExist(id, cancellationToken))
+        {
+            return NotFound($"Trip with ID {id} not found");
+        }
+        
+        var trip = await _tripsService.GetTrip(id, cancellationToken);
+        return Ok(trip);
     }
 }

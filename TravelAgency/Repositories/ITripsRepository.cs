@@ -4,5 +4,8 @@ namespace TravelAgency.Repositories;
 
 public interface ITripsRepository
 {
-    Task<List<TripDTO>> GetTrips();
+    Task<List<TripDTO>> GetTrips(CancellationToken cancellationToken);
+    Task<TripDTO> GetTrip(int tripId, CancellationToken cancellationToken);
+    Task<bool> DoesTripExist(int tripId, CancellationToken cancellationToken);
+    Task<bool> IsTripFull(int tripId, CancellationToken cancellationToken);
 }

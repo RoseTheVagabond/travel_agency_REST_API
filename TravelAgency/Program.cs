@@ -15,16 +15,19 @@ public class Program
         builder.Services.AddControllers();
         builder.Services.AddScoped<ITripsService, TripsService>();
         builder.Services.AddScoped<ITripsRepository, TripsRepository>();
+        builder.Services.AddScoped<IClientsService, ClientsService>();
+        builder.Services.AddScoped<IClientsRepository, ClientsRepository>();
 
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();
+
         builder.Services.AddSwaggerGen(c =>
         {
             c.SwaggerDoc("v1", new OpenApiInfo
             {
                 Title = "Travel Agency API",
                 Version = "v1",
-                Description = "REST API for a tavel agency",
+                Description = "REST API for a travel agency",
             });
         });
 
