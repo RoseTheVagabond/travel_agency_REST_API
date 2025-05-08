@@ -16,14 +16,4 @@ public class TripsService : ITripsService
     {
         return await _tripsRepository.GetTrips(cancellationToken);
     }
-    
-    public async Task<TripDTO> GetTrip(int tripId, CancellationToken cancellationToken)
-    {
-        return await _tripsRepository.GetTrip(tripId, cancellationToken);
-    }
-    
-    public async Task<bool> DoesTripExist(int tripId, CancellationToken cancellationToken)
-    {
-        return await _tripsRepository.DoesTripExist(tripId, cancellationToken);
-    }
 }

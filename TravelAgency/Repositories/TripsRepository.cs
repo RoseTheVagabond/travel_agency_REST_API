@@ -1,5 +1,4 @@
 using Microsoft.Data.SqlClient;
-using System.Data;
 using TravelAgency.DTOs;
 
 namespace TravelAgency.Repositories;
@@ -52,49 +51,6 @@ public class TripsRepository : ITripsRepository
             trip.Countries = await GetTripCountriesWithNewConnection(trip.Id, cancellationToken);
         }
         return trips;
-    }
-    
-    public async Task<TripDTO> GetTrip(int tripId, CancellationToken cancellationToken)
-    {
-        TripDTO trip = null;
-        
-        //returns all information about a specific trip
-        const string commandText = @"
-            SELECT IdTrip, Name, Description, DateFrom, DateTo, MaxPeople 
-            FROM Trip
-            WHERE IdTrip = @TripId";
-        
-        using SqlConnection connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
-        
-        using (SqlCommand command = new SqlCommand(commandText, connection))
-        {
-            command.Parameters.AddWithValue("@TripId", tripId);
-            
-            using (SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken))
-            {
-                if (await reader.ReadAsync(cancellationToken))
-                {
-                    trip = new TripDTO
-                    {
-                        Id = reader.GetInt32(reader.GetOrdinal("IdTrip")),
-                        Name = reader.GetString(reader.GetOrdinal("Name")),
-                        Description = reader.GetString(reader.GetOrdinal("Description")),
-                        DateFrom = reader.GetDateTime(reader.GetOrdinal("DateFrom")),
-                        DateTo = reader.GetDateTime(reader.GetOrdinal("DateTo")),
-                        MaxPeople = reader.GetInt32(reader.GetOrdinal("MaxPeople")),
-                        Countries = new List<CountryDTO>()
-                    };
-                }
-            }
-        }
-        
-        if (trip != null)
-        {
-            // gets countries using a separate connection
-            trip.Countries = await GetTripCountriesWithNewConnection(trip.Id, cancellationToken);
-        }
-        return trip;
     }
     
     private async Task<List<CountryDTO>> GetTripCountriesWithNewConnection(int tripId, CancellationToken cancellationToken)
