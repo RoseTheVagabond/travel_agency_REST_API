@@ -15,6 +15,7 @@ public class ClientsController : ControllerBase
         _clientsService = clientsService;
     }
 
+    // Displays all trips for which the client with a specified id is signed up
     [HttpGet("{id}/trips")]
     public async Task<IActionResult> GetClientTrips(int id, CancellationToken cancellationToken)
     {
@@ -29,6 +30,7 @@ public class ClientsController : ControllerBase
         return Ok(trips);
     }
 
+    // adds a new client to the database with validation of the data passed by the user
     [HttpPost]
     public async Task<IActionResult> CreateClient([FromBody] ClientDTO client, CancellationToken cancellationToken)
     {
@@ -49,12 +51,10 @@ public class ClientsController : ControllerBase
 
         if (string.IsNullOrEmpty(client.Pesel))
             return BadRequest("PESEL is required");
-
-        // Basic PESEL validation (11 digits)
+        
         if (client.Pesel.Length != 11 || !client.Pesel.All(char.IsDigit))
             return BadRequest("PESEL must be 11 digits");
-
-        // Basic email validation
+        
         if (!client.Email.Contains('@') || !client.Email.Contains('.'))
             return BadRequest("Invalid email format");
 
@@ -62,6 +62,7 @@ public class ClientsController : ControllerBase
         return CreatedAtAction(nameof(GetClientTrips), new { id = clientId }, new { Id = clientId });
     }
 
+    // registers a client for a trip using enums to determine status codes, which should be returned
     [HttpPut("{id}/trips/{tripId}")]
     public async Task<IActionResult> RegisterClientForTrip(int id, int tripId, CancellationToken cancellationToken)
     {
@@ -81,6 +82,7 @@ public class ClientsController : ControllerBase
         };
     }
 
+    // removes a specified client from the specified trip, uses enums to simplify determining the status codes
     [HttpDelete("{id}/trips/{tripId}")]
     public async Task<IActionResult> RemoveClientFromTrip(int id, int tripId, CancellationToken cancellationToken)
     {

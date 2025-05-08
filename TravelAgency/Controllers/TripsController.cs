@@ -14,6 +14,7 @@ public class TripsController : ControllerBase
         _tripsService = tripsService;
     }
 
+    // displays information about all trips
     [HttpGet]
     public async Task<IActionResult> GetTrips(CancellationToken cancellationToken)
     {
@@ -21,6 +22,7 @@ public class TripsController : ControllerBase
         return Ok(trips);
     }
 
+    // displays information about a specific trip, with an id given as an argument
     [HttpGet("{id}")]
     public async Task<IActionResult> GetTrip(int id, CancellationToken cancellationToken)
     {

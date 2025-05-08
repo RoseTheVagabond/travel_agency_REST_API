@@ -1,5 +1,4 @@
 using Microsoft.Data.SqlClient;
-using System.Data;
 using TravelAgency.DTOs;
 
 namespace TravelAgency.Repositories;
@@ -15,6 +14,7 @@ public class ClientsRepository : IClientsRepository
 
     public async Task<bool> DoesClientExist(int clientId, CancellationToken cancellationToken)
     {
+        // returns 1 if the specified client exists
         const string commandText = "SELECT 1 FROM Client WHERE IdClient = @ClientId";
         
         using SqlConnection connection = new SqlConnection(_connectionString);
@@ -32,6 +32,7 @@ public class ClientsRepository : IClientsRepository
     {
         var clientTrips = new List<ClientTripDTO>();
         
+        // returns all trip information for trips of the specified client
         const string commandText = @"
             SELECT t.IdTrip, t.Name, t.Description, t.DateFrom, t.DateTo, t.MaxPeople, 
                    ct.RegisteredAt, ct.PaymentDate
@@ -42,7 +43,6 @@ public class ClientsRepository : IClientsRepository
         using SqlConnection connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         
-        // Get client trips
         using (SqlCommand command = new SqlCommand(commandText, connection))
         {
             command.Parameters.AddWithValue("@ClientId", clientId);
@@ -72,12 +72,11 @@ public class ClientsRepository : IClientsRepository
             }
         }
         
-        // Get countries for each trip using separate connections
+        // get countries for each trip using separate connections
         foreach (var clientTrip in clientTrips)
         {
             clientTrip.Trip.Countries = await GetTripCountriesWithNewConnection(clientTrip.Trip.Id, cancellationToken);
         }
-        
         return clientTrips;
     }
 
@@ -85,6 +84,7 @@ public class ClientsRepository : IClientsRepository
     {
         var countries = new List<CountryDTO>();
         
+        //returns Id's and Name's of the countries associated with a specified trip with Id
         const string commandText = @"
             SELECT c.IdCountry, c.Name
             FROM Country c
@@ -114,6 +114,7 @@ public class ClientsRepository : IClientsRepository
 
     public async Task<int> CreateClient(ClientDTO client, CancellationToken cancellationToken)
     {
+        // adds a new client to the database
         const string commandText = @"
             INSERT INTO Client (FirstName, LastName, Email, Telephone, Pesel)
             OUTPUT INSERTED.IdClient
@@ -136,6 +137,7 @@ public class ClientsRepository : IClientsRepository
 
     public async Task<bool> IsClientRegisteredForTrip(int clientId, int tripId, CancellationToken cancellationToken)
     {
+        // returns 1 if the client with a specified Id is assigned a trip with a specified Id
         const string commandText = @"
             SELECT 1 FROM Client_Trip 
             WHERE IdClient = @ClientId AND IdTrip = @TripId";
@@ -154,6 +156,7 @@ public class ClientsRepository : IClientsRepository
 
     public async Task<bool> RegisterClientForTrip(int clientId, int tripId, CancellationToken cancellationToken)
     {
+        // adds a row to Client_Trip table, registering a specific client for a specific trip
         const string commandText = @"
             INSERT INTO Client_Trip (IdClient, IdTrip, RegisteredAt, PaymentDate)
             VALUES (@ClientId, @TripId, @RegisteredAt, NULL)";
@@ -173,6 +176,7 @@ public class ClientsRepository : IClientsRepository
 
     public async Task<bool> RemoveClientFromTrip(int clientId, int tripId, CancellationToken cancellationToken)
     {
+        //removes a row in Client_Trip table, removing a specified client from a specified trip
         const string commandText = @"
             DELETE FROM Client_Trip 
             WHERE IdClient = @ClientId AND IdTrip = @TripId";

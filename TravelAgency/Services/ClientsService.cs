@@ -48,39 +48,39 @@ public class ClientsService : IClientsService
 
     public async Task<ClientTripRegistrationResult> RegisterClientForTrip(int clientId, int tripId, CancellationToken cancellationToken)
     {
-        // Check if client exists
+        // check if client exists
         var clientExists = await _clientsRepository.DoesClientExist(clientId, cancellationToken);
         if (!clientExists)
             return ClientTripRegistrationResult.ClientNotFound;
 
-        // Check if trip exists
+        // check if trip exists
         var tripExists = await _tripsRepository.DoesTripExist(tripId, cancellationToken);
         if (!tripExists)
             return ClientTripRegistrationResult.TripNotFound;
 
-        // Check if client is already registered for this trip
+        // check if client is already registered for this trip
         var isRegistered = await _clientsRepository.IsClientRegisteredForTrip(clientId, tripId, cancellationToken);
         if (isRegistered)
             return ClientTripRegistrationResult.AlreadyRegistered;
 
-        // Check if the trip is full
+        // check if the trip is full
         var isTripFull = await _tripsRepository.IsTripFull(tripId, cancellationToken);
         if (isTripFull)
             return ClientTripRegistrationResult.TripFull;
 
-        // Register client for the trip
+        // register client for the trip
         var success = await _clientsRepository.RegisterClientForTrip(clientId, tripId, cancellationToken);
         return success ? ClientTripRegistrationResult.Success : ClientTripRegistrationResult.Error;
     }
 
     public async Task<ClientTripRemovalResult> RemoveClientFromTrip(int clientId, int tripId, CancellationToken cancellationToken)
     {
-        // Check if client is registered for this trip
+        // check if client is registered for this trip
         var isRegistered = await _clientsRepository.IsClientRegisteredForTrip(clientId, tripId, cancellationToken);
         if (!isRegistered)
             return ClientTripRemovalResult.RegistrationNotFound;
 
-        // Remove client from the trip
+        // remove client from the trip
         var success = await _clientsRepository.RemoveClientFromTrip(clientId, tripId, cancellationToken);
         return success ? ClientTripRemovalResult.Success : ClientTripRemovalResult.Error;
     }

@@ -17,6 +17,7 @@ public class TripsRepository : ITripsRepository
     {
         var trips = new List<TripDTO>();
 
+        // returns all information about all trips
         const string commandText = @"
             SELECT IdTrip, Name, Description, DateFrom, DateTo, MaxPeople 
             FROM Trip
@@ -25,7 +26,6 @@ public class TripsRepository : ITripsRepository
         using SqlConnection connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         
-        // First, get all trips
         using (SqlCommand command = new SqlCommand(commandText, connection))
         using (SqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken))
         {
@@ -46,12 +46,11 @@ public class TripsRepository : ITripsRepository
             }
         }
         
-        // Then, get countries for each trip using separate connections
+        // gets countries for each trip using a separate connection
         foreach (var trip in trips)
         {
             trip.Countries = await GetTripCountriesWithNewConnection(trip.Id, cancellationToken);
         }
-
         return trips;
     }
     
@@ -59,6 +58,7 @@ public class TripsRepository : ITripsRepository
     {
         TripDTO trip = null;
         
+        //returns all information about a specific trip
         const string commandText = @"
             SELECT IdTrip, Name, Description, DateFrom, DateTo, MaxPeople 
             FROM Trip
@@ -91,10 +91,9 @@ public class TripsRepository : ITripsRepository
         
         if (trip != null)
         {
-            // Get countries using a separate connection
+            // gets countries using a separate connection
             trip.Countries = await GetTripCountriesWithNewConnection(trip.Id, cancellationToken);
         }
-        
         return trip;
     }
     
@@ -102,13 +101,13 @@ public class TripsRepository : ITripsRepository
     {
         var countries = new List<CountryDTO>();
         
+        // fetches all names and id's of countries associated with a specific trip
         const string commandText = @"
             SELECT c.IdCountry, c.Name
             FROM Country c
             JOIN Country_Trip ct ON c.IdCountry = ct.IdCountry
             WHERE ct.IdTrip = @TripId";
         
-        // Use a new connection for getting countries
         using SqlConnection connection = new SqlConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
         
@@ -125,14 +124,12 @@ public class TripsRepository : ITripsRepository
                 Name = reader.GetString(reader.GetOrdinal("Name"))
             });
         }
-        
         return countries;
     }
     
-    // Remove the old GetTripCountries method that reused connections
-    
     public async Task<bool> DoesTripExist(int tripId, CancellationToken cancellationToken)
     {
+        // checks if the trip with a specific Id exists in the database
         const string commandText = "SELECT 1 FROM Trip WHERE IdTrip = @TripId";
         
         using SqlConnection connection = new SqlConnection(_connectionString);
@@ -148,6 +145,7 @@ public class TripsRepository : ITripsRepository
     
     public async Task<bool> IsTripFull(int tripId, CancellationToken cancellationToken)
     {
+        // checks is the number of clients assigned to the trip is not greater or equal to the maximum allowed number of people on it
         const string commandText = @"
             SELECT 
                 CASE 
